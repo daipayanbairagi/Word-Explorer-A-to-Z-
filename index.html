@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A to Z Word Explorer - PWA</title>
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-100 to-purple-200 text-center p-4 relative">
+
+    <!-- Modal Popup -->
+    <div id="modal" class="hidden fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg text-lg font-semibold text-center">
+            <p id="modalText" class="text-gray-800"></p>
+        </div>
+    </div>
+
+    <div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-xl mt-10 border-4 border-purple-300">
+        <h1 class="text-3xl font-bold text-purple-700">Word Explorer (A to Z) 📝</h1>
+        <p id="score" class="text-xl text-green-600 font-semibold mt-2">Score: 0</p>
+
+        <img id="wordImage" src="" alt="Word Image" class="w-40 mx-auto my-4 rounded-md shadow-lg border-2 border-gray-300">
+
+        <div id="letters" class="flex flex-wrap justify-center gap-2 p-4 bg-gradient-to-r from-pink-300 to-yellow-200 rounded-md shadow-md"></div>
+
+        <div id="dropzone" class="min-h-16 p-4 border-2 border-dashed border-blue-600 mt-4 text-lg font-semibold bg-blue-100 rounded-md shadow-md">
+            Drop Letters Here
+        </div>
+
+        <button id="hintButton" class="bg-yellow-500 text-white px-5 py-2 rounded-md mt-4 hover:bg-yellow-600 transition shadow-md">Hint</button>
+        <button id="checkAnswer" class="bg-green-500 text-white px-5 py-2 rounded-md mt-4 hover:bg-green-600 transition shadow-md">Submit Answer</button>
+        <button id="resetGame" class="bg-red-500 text-white px-5 py-2 rounded-md mt-2 hover:bg-red-600 transition shadow-md">Reset Game</button>
+    </div>
+
+    <script>
+        const words = [
+            { word: "APPLE", image: "https://upload.wikimedia.org/wikipedia/commons/1/15/Red_Apple.jpg" },
+            { word: "BALL", image: "https://upload.wikimedia.org/wikipedia/commons/7/7a/Basketball.png" }
+        ];
+
+        let currentWordIndex = 0;
+        let revealedLetters = 0;
+        let score = localStorage.getItem("score") ? parseInt(localStorage.getItem("score")) : 0;
+        document.getElementById("score").innerText = `Score: ${score}`;
+
+        function showModal(message, type) {
+            const modal = document.getElementById("modal");
+            const modalText = document.getElementById("modalText");
+            modalText.innerText = message;
+            modalText.classList.toggle("text-green-600", type === "success");
+            modalText.classList.toggle("text-red-600", type !== "success");
+            modal.classList.remove("hidden");
+            setTimeout(() => modal.classList.add("hidden"), 1000);
+        }
+
+        function loadWord() {
+            let wordObj = words[currentWordIndex];
+            document.getElementById("wordImage").src = wordObj.image;
+            let lettersContainer = document.getElementById("letters");
+            lettersContainer.innerHTML = "";
+            revealedLetters = 0;
+            document.getElementById("hintButton").disabled = false;
+            
+            for (let i = 65; i <= 90; i++) {
+                let letter = String.fromCharCode(i);
+                let span = document.createElement("span");
+                span.classList.add("px-4", "py-2", "bg-blue-400", "text-white", "rounded-md", "cursor-pointer", "hover:bg-blue-500", "transition", "shadow");
+                span.innerText = letter;
+                span.draggable = true;
+                span.addEventListener("dragstart", (e) => e.dataTransfer.setData("text", e.target.innerText));
+                lettersContainer.appendChild(span);
+            }
+            document.getElementById("dropzone").innerHTML = "Drop Letters Here";
+        }
+
+        document.getElementById("dropzone").addEventListener("dragover", (e) => e.preventDefault());
+        document.getElementById("dropzone").addEventListener("drop", (e) => {
+            e.preventDefault();
+            let letter = e.dataTransfer.getData("text");
+            let dropzone = document.getElementById("dropzone");
+            if (dropzone.innerText === "Drop Letters Here") {
+                dropzone.innerText = "";
+            }
+            let span = document.createElement("span");
+            span.innerText = letter;
+            span.classList.add("text-blue-600", "font-bold", "text-xl", "px-2");
+            dropzone.appendChild(span);
+        });
+
+        document.getElementById("hintButton").addEventListener("click", () => {
+            let word = words[currentWordIndex].word;
+            let dropzoneText = Array.from(document.getElementById("dropzone").children).map(span => span.innerText).join("");
+            let nextHintIndex = dropzoneText.length;
+            
+            if (nextHintIndex < word.length) {
+                let hintLetter = word[nextHintIndex];
+                let hintSpan = document.createElement("span");
+                hintSpan.innerText = hintLetter;
+                hintSpan.classList.add("text-red-600", "font-bold", "text-xl", "px-2");
+                document.getElementById("dropzone").appendChild(hintSpan);
+                revealedLetters++;
+            }
+            if (revealedLetters >= word.length) {
+                document.getElementById("hintButton").disabled = true;
+            }
+        });
+
+        document.getElementById("checkAnswer").addEventListener("click", () => {
+            let userAnswer = Array.from(document.getElementById("dropzone").children).map(span => span.innerText).join("");
+            if (userAnswer === words[currentWordIndex].word) {
+                showModal("✅ Correct! Next Level Unlocking...", "success");
+                score += 10;
+                localStorage.setItem("score", score);
+                document.getElementById("score").innerText = `Score: ${score}`;
+                currentWordIndex = (currentWordIndex + 1) % words.length;
+                setTimeout(loadWord, 1000);
+            } else {
+                showModal("❌ Wrong! Try Again...", "error");
+            }
+        });
+
+        document.getElementById("resetGame").addEventListener("click", () => {
+            localStorage.setItem("score", 0);
+            score = 0;
+            document.getElementById("score").innerText = "Score: 0";
+            currentWordIndex = 0;
+            loadWord();
+        });
+
+        loadWord();
+    </script>
+</body>
+</html>
